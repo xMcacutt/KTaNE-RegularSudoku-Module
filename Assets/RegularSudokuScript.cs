@@ -537,38 +537,22 @@ public class RegularSudokuScript : MonoBehaviour
 		var ciphers = FindObjectsOfType<MonoBehaviour>()
 			.Where(mb => mb.GetType().Name == "SudokuCipher");
 
+		var regularDataType = AppDomain.CurrentDomain.GetAssemblies()
+			.SelectMany(a => a.GetSafeTypes())
+			.FirstOrDefault(t => t.Name == "RegularSudokuData");
+
+		if (regularDataType == null)
+			return;
+			
 		foreach (var cipher in ciphers)
 		{
-			if (cipher.transform.parent.GetInstanceID() != transform.parent.GetInstanceID())
+			if (cipher.transform.parent != transform.parent)
 				continue;
-		
-			var cipherType = cipher.GetType();
-			var enqueueMethod = cipherType.GetMethods()
-				.FirstOrDefault(m => m.Name == "Enqueue" && m.GetParameters().Length == 2);
-
-			if (enqueueMethod == null)
-				continue;
-
-			var regularDataType = AppDomain.CurrentDomain.GetAssemblies()
-				.SelectMany(a => a.GetTypes())
-				.FirstOrDefault(t => t.Name == "RegularSudokuData");
-
-			if (regularDataType == null)
-				continue;
-
 			var sudokuDataInstance = Activator.CreateInstance(regularDataType);
-
-			var listType = typeof(List<int>);
-			var listInstance = Activator.CreateInstance(listType);
-			var addMethod = listType.GetMethod("Add");
-
-			foreach (var num in sudokuSolution)
-				addMethod.Invoke(listInstance, new object[] { num });
-
+			var listInstance = sudokuSolution.ToList();
 			sudokuDataInstance.SetValue("solution", listInstance);
-
-			try { enqueueMethod.Invoke(cipher, new object[] { "Regular", sudokuDataInstance }); }
-			catch (Exception e) { }
+			try { cipher.CallMethod("Enqueue", "Regular", sudokuDataInstance); }
+			catch (Exception e) { Debug.LogFormat("[Regular Sudoku{0}] {1}", moduleId, e); }
 		}
 	}
 	
